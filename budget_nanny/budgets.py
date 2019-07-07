@@ -1,3 +1,5 @@
+import itertools
+
 from budget_nanny.api_requests import APIRequester, BUDGETS_ENDPOINT, BUDGET_ENDPOINTS
 
 DEFAULT_BUDGET = 'TEST'

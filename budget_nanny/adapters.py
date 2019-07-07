@@ -1,9 +1,12 @@
 import collections
 
+from fuzzywuzzy import process
+
 from budget_nanny.budgets import default_budget_requester
 
 import_counter = collections.Counter()
 accounts = default_budget_requester.get_accounts()
+payees = default_budget_requester.get_payees()
 
 
 def get_import_id_for_transaction(transaction):
@@ -29,7 +32,22 @@ def get_import_id_for_transaction(transaction):
     return f'YNAB:{transaction_amount}:{transaction_date}:{counts_for_this_transaction}'
 
 
+def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_in_bank_statement):
+    payee_names = [x['name'] for x in payees]
+
+    result = process.extractOne(payee_in_bank_statement, payee_names, score_cutoff=0)
+
+    if not result:
+        return None
+
+    matched_payee_name, _ = result
+
+    return [x for x in payees if x['name'] == matched_payee_name][0]
+
+
 def bank_to_ynab(bank_transaction):
+    matched_payee = get_fuzzy_match_on_ynab_payees_with_bank_payee(bank_transaction['payee'])
+
     ynab_transaction = {
         'account_id': get_ynab_account_id_for_bank_account(bank_transaction['account']),
         'date': bank_transaction['date'].date().isoformat(),
@@ -37,8 +55,8 @@ def bank_to_ynab(bank_transaction):
             int((bank_transaction['outflow'] * -1) * 1000)
             if bank_transaction['outflow']
             else int(bank_transaction['inflow'] * 1000),
-        'payee_id': None,
-        'payee_name': bank_transaction['payee'][:50],
+        'payee_id': matched_payee['id'] if matched_payee else None,
+        'payee_name': bank_transaction['payee'][:50] if matched_payee is None else None,
         'category_id': None,
         'memo': 'Imported by Budget Nanny',
     }
