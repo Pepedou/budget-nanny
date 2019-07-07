@@ -2,7 +2,7 @@ import itertools
 
 from budget_nanny.api_requests import APIRequester, BUDGETS_ENDPOINT, BUDGET_ENDPOINTS
 
-DEFAULT_BUDGET = 'TEST'
+DEFAULT_BUDGET = 'Personal'
 
 
 class BudgetRequester:
@@ -28,7 +28,11 @@ class BudgetRequester:
         return self._get_budget_collection('accounts')
 
     def get_categories(self):
-        return self._get_budget_collection('categories')
+        return itertools.chain.from_iterable([
+            x['categories'] for x in self.api_requester.get(
+                BUDGET_ENDPOINTS['categories'].replace('budget_id', self.budget['id'])
+            )['category_groups']
+        ])
 
     def get_payees(self):
         return self._get_budget_collection('payees')
