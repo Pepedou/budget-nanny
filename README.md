@@ -1,4 +1,7 @@
 # Budget Nanny
+![alt text](docs/nanny.png)
+
+_Icon designed by Eucalyp from Flaticon._
 
 A simple synchronization application and budget monitor for BBVA and YNAB written in Python3.
 
