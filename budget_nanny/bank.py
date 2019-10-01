@@ -34,7 +34,7 @@ def get_transactions_for_account(account):
             try:
                 my_date = datetime.strptime(sheet.cell_value(i, 0), '%d/%m/%Y')
             except ValueError:
-                print('Ignoring row {} "{}", because it does not start with a date.'.format(
+                _logger.debug('Ignoring row {} "{}", because it does not start with a date.'.format(
                     i + 1,
                     sheet.cell_value(i, 0))
                 )
