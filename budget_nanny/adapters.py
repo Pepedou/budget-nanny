@@ -1,8 +1,12 @@
 import collections
+import logging
+import re
 
 from fuzzywuzzy import process
 
 from budget_nanny.budgets import default_budget_requester
+
+_logger = logging.getLogger(__name__)
 
 import_counter = collections.Counter()
 accounts = default_budget_requester.get_accounts()
@@ -32,17 +36,38 @@ def get_import_id_for_transaction(transaction):
     return f'YNAB:{transaction_amount}:{transaction_date}:{counts_for_this_transaction}'
 
 
-def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_in_bank_statement):
+already_asked = {}
+
+
+def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_name_from_bank_statement):
     payee_names = [x['name'] for x in payees]
 
-    result = process.extractOne(payee_in_bank_statement, payee_names, score_cutoff=0)
+    clean_payee_name_from_bank_statement = clean_payee_name(payee_name_from_bank_statement)
+    result = process.extractOne(clean_payee_name_from_bank_statement, payee_names, score_cutoff=70)
 
     if not result:
         return None
 
-    matched_payee_name, _ = result
+    matched_payee_name, score = result
 
-    return [x for x in payees if x['name'] == matched_payee_name][0]
+    if score >= 90:
+        is_same = True
+        _logger.info(f'Matched "{clean_payee_name_from_bank_statement}" to "{matched_payee_name}" ({score}).')
+    else:
+        key = (clean_payee_name_from_bank_statement, matched_payee_name,)
+        if key not in already_asked:
+            is_same = input(
+                f'Is "{clean_payee_name_from_bank_statement}" the same as "{matched_payee_name}" ({score})? [y/N]'
+            ).lower() == 'y'
+            already_asked.update({key: is_same})
+        else:
+            is_same = already_asked.get(key)
+            _logger.debug(
+                f'Reusing answer ({"Yes" if is_same else "No"}) for "{clean_payee_name_from_bank_statement}" matches '
+                f'"{matched_payee_name}" ({score})'
+            )
+
+    return [x for x in payees if x['name'] == matched_payee_name][0] if is_same else None
 
 
 def bank_to_ynab(bank_transaction):
@@ -56,7 +81,7 @@ def bank_to_ynab(bank_transaction):
             if bank_transaction['outflow']
             else int(bank_transaction['inflow'] * 1000),
         'payee_id': matched_payee['id'] if matched_payee else None,
-        'payee_name': bank_transaction['payee'][:50] if matched_payee is None else None,
+        'payee_name': matched_payee,
         'category_id': None,
         'memo': 'Imported by Budget Nanny',
     }
@@ -77,3 +102,11 @@ def get_ynab_account_id_for_bank_account(bank_account):
 
 def bank_to_ynab_multi(bank_transactions):
     return map(bank_to_ynab, bank_transactions)
+
+
+def clean_payee_name(payee_name):
+    name_without_special_chars = re.sub('[*:/;]', '', payee_name)
+    name_without_rfc = re.sub('RFC[:]?', '', name_without_special_chars)
+    name_without_account_numbers = re.sub('\d{3,}\w*', '', name_without_rfc)
+    name_without_long_whitespaces = re.sub(' {2,}', '', name_without_account_numbers)
+    return name_without_long_whitespaces

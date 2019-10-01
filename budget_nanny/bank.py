@@ -1,12 +1,15 @@
 import decimal
 import itertools
+import logging
 import os
 from datetime import datetime
 
 import xlrd
 
-BANK_ACCOUNT_DEBIT = 'debit'
-BANK_ACCOUNT_CREDIT = 'credit'
+_logger = logging.getLogger(__name__)
+
+BANK_ACCOUNT_DEBIT = 'Bancomer Nómina'
+BANK_ACCOUNT_CREDIT = 'Bancomer Platino'
 
 ACCOUNT_STATEMENTS = {
     BANK_ACCOUNT_DEBIT: os.path.expanduser('~/Downloads/debito.xlsx'),

@@ -1,5 +1,8 @@
+import logging
 import time
 from contextlib import contextmanager
+
+_logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -18,6 +21,6 @@ def timeit(name):
     took_more_than_one_second = hours > 0 or minutes > 0 or seconds > 0
 
     if took_more_than_one_second:
-        print('%s finished in %02d:%02d:%02d".' % (name, hours, minutes, seconds))
+        _logger.info('%s finished in %02d:%02d:%02d".' % (name, hours, minutes, seconds))
     else:
-        print('{} finished in {:.3f} ms.'.format(name, ms))
+        _logger.info('{} finished in {:.3f} ms.'.format(name, ms))

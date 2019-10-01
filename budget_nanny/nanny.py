@@ -5,7 +5,8 @@ from budget_nanny.budgets import default_budget_requester
 
 
 class BudgetNanny:
-    def sync_bank_to_ynab(self):
+    @staticmethod
+    def sync_bank_to_ynab():
         bank_transactions = get_transactions_for_all_accounts()
         transactions_in_ynab_format = bank_to_ynab_multi(bank_transactions)
         default_budget_requester.create_transactions(transactions_in_ynab_format)
