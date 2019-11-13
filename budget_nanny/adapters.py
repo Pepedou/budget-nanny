@@ -73,6 +73,7 @@ def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_name_from_bank_statemen
 def bank_to_ynab(bank_transaction):
     matched_payee = get_fuzzy_match_on_ynab_payees_with_bank_payee(bank_transaction['payee'])
 
+    payee_name = matched_payee['name'] if matched_payee else clean_payee_name(bank_transaction['payee'])
     ynab_transaction = {
         'account_id': get_ynab_account_id_for_bank_account(bank_transaction['account']),
         'date': bank_transaction['date'].date().isoformat(),
@@ -81,7 +82,7 @@ def bank_to_ynab(bank_transaction):
             if bank_transaction['outflow']
             else int(bank_transaction['inflow'] * 1000),
         'payee_id': matched_payee['id'] if matched_payee else None,
-        'payee_name': matched_payee,
+        'payee_name': payee_name[:50],
         'category_id': None,
         'memo': 'Imported by Budget Nanny',
     }
