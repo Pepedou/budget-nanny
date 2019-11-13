@@ -20,7 +20,7 @@ class BudgetRequester:
     def create_transactions(self, transactions):
         return self.api_requester.post(
             BUDGET_ENDPOINTS['transactions'].replace('budget_id', self.budget['id']), {
-                'transactions': list(transactions)
+                'transactions': transactions
             }
         )
 

@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 BANK_ACCOUNT_DEBIT = 'Bancomer Nómina'
 BANK_ACCOUNT_CREDIT = 'Bancomer Platino'
 
-ACCOUNT_STATEMENTS = {
+ACCOUNT_STATEMENTS_FILENAMES = {
     BANK_ACCOUNT_DEBIT: os.path.expanduser('~/Downloads/debito.xlsx'),
     BANK_ACCOUNT_CREDIT: os.path.expanduser('~/Downloads/credito.xlsx'),
 }
@@ -25,9 +25,9 @@ def get_transactions_for_all_accounts():
 
 def get_transactions_for_account(account):
     transactions = []
-    bank_file = ACCOUNT_STATEMENTS[account]
+    bank_file = ACCOUNT_STATEMENTS_FILENAMES[account]
 
-    with xlrd.open_workbook(bank_file) as wb:
+    with xlrd.open_workbook(bank_file, on_demand=True) as wb:
         sheet = wb.sheet_by_index(0)
 
         for i in range(0, sheet.nrows):

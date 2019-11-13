@@ -12,7 +12,6 @@ def main():
     with timeit('Budget Nanny'):
         nanny = BudgetNanny()
         nanny.sync_bank_to_ynab()
-        nanny.validate_budget()
 
 
 def setup_logging():
@@ -20,7 +19,7 @@ def setup_logging():
     Sets up the loggers.
     """
     _logger.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(module)s.%(funcName)s:%(lineno)d => %(message)s')
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 
     streaming_handler = logging.StreamHandler(sys.stdout)
     streaming_handler.setLevel(logging.DEBUG)
