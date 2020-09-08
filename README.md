@@ -12,6 +12,8 @@ You'll need at least python 3. This was tested with 3.7.
   - `git clone https://github.com/Pepedou/budget-nanny`
 - `cd` into the root directory.
   - `cd budget-nanny`
+- Make sure to install `wheel`.
+  - pip install wheel
 - Build the source code (using a virtual environment).
   - `python setup.py bdist_wheel`
 - Install.
