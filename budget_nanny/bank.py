@@ -8,8 +8,8 @@ import xlrd
 
 _logger = logging.getLogger(__name__)
 
-BANK_ACCOUNT_DEBIT = 'Bancomer Nómina'
-BANK_ACCOUNT_CREDIT = 'Bancomer Platino'
+BANK_ACCOUNT_DEBIT = 'BBVA Nómina'
+BANK_ACCOUNT_CREDIT = 'BBVA Platino'
 
 ACCOUNT_STATEMENTS = {
     BANK_ACCOUNT_DEBIT: os.path.expanduser('~/Downloads/debito.xlsx'),
