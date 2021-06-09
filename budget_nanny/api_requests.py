@@ -40,6 +40,7 @@ class APIRequester:
         return response_wrapper['data']
 
     def post(self, endpoint, data):
+        return
         self.raw_response = requests.post(endpoint, headers=self.headers, json=data)
         response_wrapper = self._validate_response()
         return response_wrapper['data']

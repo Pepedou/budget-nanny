@@ -1,4 +1,3 @@
-budget-nanny==0.0.1
 certifi==2019.6.16
 chardet==3.0.4
 fuzzywuzzy==0.17.0

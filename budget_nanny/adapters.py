@@ -36,10 +36,7 @@ def get_import_id_for_transaction(transaction):
     return f'YNAB:{transaction_amount}:{transaction_date}:{counts_for_this_transaction}'
 
 
-already_asked = {}
-
-
-def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_name_from_bank_statement):
+def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_name_from_bank_statement, cache):
     payee_names = [x['name'] for x in payees]
 
     clean_payee_name_from_bank_statement = clean_payee_name(payee_name_from_bank_statement)
@@ -55,13 +52,13 @@ def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_name_from_bank_statemen
         _logger.info(f'Matched "{clean_payee_name_from_bank_statement}" to "{matched_payee_name}" ({score}).')
     else:
         key = (clean_payee_name_from_bank_statement, matched_payee_name,)
-        if key not in already_asked:
+        if key not in cache:
             is_same = input(
                 f'Is "{clean_payee_name_from_bank_statement}" the same as "{matched_payee_name}" ({score})? [y/N]'
             ).lower() == 'y'
-            already_asked.update({key: is_same})
+            cache.update({key: is_same})
         else:
-            is_same = already_asked.get(key)
+            is_same = cache.get(key)
             _logger.debug(
                 f'Reusing answer ({"Yes" if is_same else "No"}) for "{clean_payee_name_from_bank_statement}" matches '
                 f'"{matched_payee_name}" ({score})'
@@ -70,8 +67,28 @@ def get_fuzzy_match_on_ynab_payees_with_bank_payee(payee_name_from_bank_statemen
     return [x for x in payees if x['name'] == matched_payee_name][0] if is_same else None
 
 
+def get_ynab_account_id_for_bank_account(bank_account):
+    global accounts
+    matching_accounts = [x for x in accounts if x['name'] == bank_account]
+
+    return matching_accounts[0]['id'] if matching_accounts else None
+
+
+class Bob:
+    def __init__(self):
+        self.cache = None
+
+
+bob = Bob()
+
+
+def bank_to_ynab_multi(bank_transactions, pcache):
+    bob.cache = pcache
+    return map(bank_to_ynab, bank_transactions)
+
+
 def bank_to_ynab(bank_transaction):
-    matched_payee = get_fuzzy_match_on_ynab_payees_with_bank_payee(bank_transaction['payee'])
+    matched_payee = get_fuzzy_match_on_ynab_payees_with_bank_payee(bank_transaction['payee'], bob.cache)
 
     payee_name = matched_payee['name'] if matched_payee else clean_payee_name(bank_transaction['payee'])
     ynab_transaction = {
@@ -94,20 +111,25 @@ def bank_to_ynab(bank_transaction):
     return ynab_transaction
 
 
-def get_ynab_account_id_for_bank_account(bank_account):
-    global accounts
-    matching_accounts = [x for x in accounts if x['name'] == bank_account]
-
-    return matching_accounts[0]['id'] if matching_accounts else None
-
-
-def bank_to_ynab_multi(bank_transactions):
-    return map(bank_to_ynab, bank_transactions)
-
-
 def clean_payee_name(payee_name):
     name_without_special_chars = re.sub('[*:/;]', '', payee_name)
     name_without_rfc = re.sub('RFC[:]?', '', name_without_special_chars)
     name_without_account_numbers = re.sub('\d{3,}\w*', '', name_without_rfc)
-    name_without_long_whitespaces = re.sub(' {2,}', '', name_without_account_numbers)
-    return name_without_long_whitespaces
+    name_without_long_whitespaces = re.sub(' {2,}', ' ', name_without_account_numbers)
+    name = rename_known_edge_cases(name_without_long_whitespaces)
+    return name
+
+
+def rename_known_edge_cases(payee_name: str):
+    if payee_name.startswith('PASE '):
+        return 'I+D México (Tag)'
+    elif 'SPEI' in payee_name:
+        return 'SPEI'
+    elif 'UBER EATS' in payee_name:
+        return 'Uber Eats'
+    elif 'BANCA INTERNET' in payee_name:
+        return 'BBVA'
+    elif 'PAGO TARJETA DE CREDITO' in payee_name or 'PAGO TDC' in payee_name:
+        return 'BBVA Platino'
+
+    return payee_name
