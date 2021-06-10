@@ -1,6 +1,7 @@
 import itertools
 
 from budget_nanny.api_requests import APIRequester, BUDGETS_ENDPOINT, BUDGET_ENDPOINTS
+from payee import Payee
 
 DEFAULT_BUDGET = 'Personal'
 
@@ -35,7 +36,7 @@ class BudgetRequester:
         ])
 
     def get_payees(self):
-        return self._get_budget_collection('payees')
+        return [Payee(id=x['id'], name=x['name']) for x in self._get_budget_collection('payees')]
 
     def get_transactions(self):
         return self._get_budget_collection('transactions')

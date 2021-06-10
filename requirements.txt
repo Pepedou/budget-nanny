@@ -1,7 +1,10 @@
+bullet==2.2.0
 certifi==2019.6.16
 chardet==3.0.4
 fuzzywuzzy==0.17.0
 idna==2.8
+iterfzf==0.5.0.20.0
+plumbum==1.7.0
 python-Levenshtein==0.12.0
 requests==2.22.0
 urllib3==1.25.8
