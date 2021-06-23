@@ -10,17 +10,17 @@ class BudgetRequester:
         self.budget = budget
         self.api_requester = APIRequester()
 
-    def create_transaction(self, transaction_data):
+    def create_single_transaction(self, transaction_data):
         return self.api_requester.post(
             BUDGET_ENDPOINTS['transactions'].replace('budget_id', self.budget['id']), {
                 'transaction': transaction_data
             }
         )
 
-    def create_transactions(self, transactions):
+    def create_multiple_transactions(self, transactions):
         return self.api_requester.post(
             BUDGET_ENDPOINTS['transactions'].replace('budget_id', self.budget['id']), {
-                'transactions': list(transactions)
+                'transactions': transactions
             }
         )
 

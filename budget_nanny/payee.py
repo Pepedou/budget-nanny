@@ -3,6 +3,7 @@ import os
 import re
 
 import simplejson
+from bullet import YesNo, Input
 from fuzzywuzzy import process
 from iterfzf import iterfzf
 from simplejson import JSONDecodeError
@@ -20,7 +21,7 @@ class Payee:
         self.clean_name = _clean_payee_name(self.name)
 
     def __str__(self):
-        return self.name
+        return self.clean_name
 
 
 def _payee_encoder(obj):
@@ -32,7 +33,7 @@ def _payee_encoder(obj):
 def _clean_payee_name(payee_name: str) -> str:
     name_without_special_chars = re.sub('[*:/;]', '', payee_name)
     name_without_rfc = re.sub('RFC[:]?', '', name_without_special_chars)
-    name_without_account_numbers = re.sub('\d{2,}\w*', '', name_without_rfc)
+    name_without_account_numbers = re.sub('\d{4,}\w*', '', name_without_rfc)
     name_without_long_whitespaces = re.sub(' {1,}', ' ', name_without_account_numbers).strip()
     name = _rename_known_edge_cases(name_without_long_whitespaces)
     return name
@@ -50,9 +51,11 @@ def _rename_known_edge_cases(payee_name: str):
         new_name = 'BBVA'
     elif 'PAGO TARJETA DE CREDITO' in payee_name or 'PAGO TDC' in payee_name:
         new_name = 'BBVA Platino'
+    elif payee_name.startswith('PAYPAL '):
+        new_name = payee_name[len('PAYPAL '):]
 
     if new_name:
-        cprint(f'Renaming "{payee_name}" to "{new_name}"', 'blue', attrs=['dark'])
+        cprint(f'Renaming "{payee_name}" to "{new_name}"', 'magenta', attrs=['dark'])
         return new_name
     else:
         return payee_name
@@ -92,23 +95,24 @@ class PayeeDataProvider:
         except IndexError:
             raise ValueError(f"There's no Payee named \"{payee_name}\"")
 
-    def get_fuzzy_match_on_ynab_payees_with_bank_payee(self, payee: Payee):
-        if payee.clean_name in self.cache:
-            correct_payee = self.cache.get(payee.clean_name)
+    def get_fuzzy_match_on_ynab_payees_with_bank_payee(self, bank_transaction: 'BankTransaction'):
+        if bank_transaction.payee.clean_name in self.cache:
+            correct_payee = self.cache.get(bank_transaction.payee.clean_name)
         else:
-            correct_payee = self.foo(payee.clean_name)
+            correct_payee = self._detect_payee(bank_transaction)
 
         if correct_payee is None:
-            correct_payee = self.create_new_payee(payee.clean_name)
+            correct_payee = self.create_new_payee(bank_transaction.payee.clean_name)
 
-        print(f'"{payee.clean_name}" ==> "{correct_payee}"')
+        cprint(f'"{bank_transaction.payee}" ==> "{correct_payee}"', 'white', 'on_blue')
 
-        self.cache.update({payee.clean_name: correct_payee})
+        self.cache.update({bank_transaction.payee.clean_name: correct_payee})
 
         return correct_payee
 
-    def foo(self, clean_payee_name_from_bank_statement) -> Payee:
+    def _detect_payee(self, bank_transaction: 'BankTransaction') -> Payee:
         correct_payee = None
+        clean_payee_name_from_bank_statement = bank_transaction.payee.clean_name
         payee_with_most_similar_name = process.extractOne(
             clean_payee_name_from_bank_statement,
             self.payee_names,
@@ -121,44 +125,34 @@ class PayeeDataProvider:
             if score >= 90:
                 correct_payee = self.get_payee_by_name(matched_payee_name)
             else:
-                payee_was_matched_correctly = input(
+                payee_was_matched_correctly = YesNo(
                     colored(
-                        f'Is "{clean_payee_name_from_bank_statement}" the same as "{matched_payee_name}" ({score})? [y/N]',
+                        f'Is "{bank_transaction.payee_name_with_amount} the same as "{matched_payee_name}" ({score})?',
                         'cyan',
                         attrs=['underline'])
-                ).lower() == 'y'
+                ).launch()
 
                 if payee_was_matched_correctly:
                     correct_payee = self.get_payee_by_name(matched_payee_name)
-                #            else:
-                #                alternative_candidates = {}
-                #                for x in process.extractBests(clean_payee_name_from_bank_statement, payee_names, score_cutoff=69):
-                #                    printable_name = f'{x[0]} ({x[1]})'
-                #                    alternative_candidates.update({printable_name: x})
-                #
-                #                selected_alternative = iterfzf(
-                #                    alternative_candidates,
-                #                    multi=False,
-                #                    prompt=f'Choose a payee  for "{clean_payee_name_from_bank_statement}" > '
-                #                )
-                #
-                #                if selected_alternative is not None:
-                #                    correct_payee = get_payee_by_name(alternative_candidates[selected_alternative])
-                #
+
         if correct_payee is None:
-            correct_payee = self.create_new_payee(clean_payee_name_from_bank_statement)
+            correct_payee = self.create_new_payee(bank_transaction)
 
         return correct_payee
 
-    def create_new_payee(self, name: str) -> Payee:
+    def create_new_payee(self, bank_transaction: 'BankTransaction') -> Payee:
         payee_name = ''
 
-        cprint(f'Payee "{name}" not found. Creating new one:', 'yellow')
+        cprint(f'Payee "{bank_transaction.payee}" not found. Creating new one:', 'yellow')
 
         while not payee_name:
-            selected = iterfzf(self.payee_names, multi=False, prompt=f"Is \"{name}\" any of these? > ")
+            selected = iterfzf(self.payee_names, multi=False,
+                               prompt=f"Is \"{bank_transaction.payee_name_with_amount}\" any of these? > ")
             if selected is not None:
                 return self.get_payee_by_name(selected)
 
-            payee_name = input(colored(f"\tWhat's the correct payee for \"{name}\"? > ", attrs=['bold'])).strip()
+            payee_name = Input(
+                colored(f"  What's the correct payee for \"{bank_transaction.payee_name_with_amount}\"? > ",
+                        attrs=['bold']), strip=True) \
+                .launch()
         return Payee(name=payee_name)

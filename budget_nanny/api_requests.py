@@ -2,6 +2,9 @@ import json
 import os
 
 import requests
+import simplejson
+
+from ynab.transactions import ynab_transactions_encoder
 
 YNAB_API_KEY = os.environ.get('YNAB_API_KEY')
 BUDGETS_ENDPOINT = 'https://api.youneedabudget.com/v1/budgets'
@@ -40,8 +43,12 @@ class APIRequester:
         return response_wrapper['data']
 
     def post(self, endpoint, data):
-        return
-        self.raw_response = requests.post(endpoint, headers=self.headers, json=data)
+        self.raw_response = requests.post(
+            endpoint,
+            headers=self.headers,
+            json=data
+        )
+        print(self.raw_response.request.body)
         response_wrapper = self._validate_response()
         return response_wrapper['data']
 
